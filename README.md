@@ -1,2 +1,772 @@
-# VG-Payroll-System
-Payroll System 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VG Payroll | System </title>
+    
+    <!-- CSS & FONTS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bank-dark: #0f1c3f; --bank-blue: #1e3a8a; --bank-gold: #f59e0b;
+            --bg-light: #f3f6f9; --text-main: #334155;
+            --shadow-soft: 0 4px 6px -1px rgba(0,0,0,0.1);
+            --shadow-hover: 0 15px 30px -5px rgba(0,0,0,0.2);
+        }
+
+        body { font-family: 'Roboto', sans-serif; background-color: var(--bg-light); color: var(--text-main); font-size: 0.9rem; overflow-x: hidden; }
+
+        /* SIDEBAR */
+        .wrapper { display: flex; width: 100%; }
+        .sidebar { min-width: 260px; background: linear-gradient(180deg, var(--bank-dark) 0%, var(--bank-blue) 100%); color: #fff; min-height: 100vh; position: fixed; z-index: 1000; }
+        .sidebar .header { padding: 25px; background: rgba(255,255,255,0.05); text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .sidebar a { padding: 15px 25px; display: flex; align-items: center; color: #cbd5e1; text-decoration: none; border-left: 4px solid transparent; transition: 0.3s; cursor: pointer; }
+        .sidebar a:hover { background: rgba(255,255,255,0.1); padding-left: 30px; color: #fff; }
+        .sidebar a.active { background: rgba(255,255,255,0.15); color: #fff; border-left: 4px solid var(--bank-gold); }
+
+        #content { width: 100%; padding: 30px; margin-left: 260px; }
+        
+        /* FIXED HOVER ANIMATIONS */
+        .bank-card { 
+            background: #fff; border-radius: 12px; box-shadow: var(--shadow-soft); margin-bottom: 25px; overflow: hidden; 
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        .bank-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-hover); }
+        
+        .stat-card { 
+            border-radius: 12px; padding: 25px; color: white; position: relative; overflow: hidden; 
+            box-shadow: var(--shadow-soft); 
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); 
+            cursor: pointer;
+        }
+        .stat-card:hover { transform: translateY(-10px) scale(1.02); box-shadow: var(--shadow-hover); z-index: 10; }
+        
+        .bank-card-header { background: #fff; padding: 20px 25px; border-bottom: 1px solid #e2e8f0; font-weight: 700; color: var(--bank-dark); text-transform: uppercase; }
+        .modern-input { border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 15px; background: #f8fafc; }
+        
+        .bg-g-1 { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+        .bg-g-2 { background: linear-gradient(135deg, #10b981, #047857); }
+        .bg-g-3 { background: linear-gradient(135deg, #f59e0b, #b45309); }
+        .bg-g-4 { background: linear-gradient(135deg, #ef4444, #b91c1c); }
+
+        .hidden { display: none !important; }
+        .custom-table { width: 100%; border-collapse: collapse; }
+        .custom-table th { background: var(--bank-dark); color: white; padding: 12px; }
+        .custom-table td { padding: 12px; border-bottom: 1px solid #eee; }
+
+        #loginOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bank-dark); z-index: 9999; display: flex; justify-content: center; align-items: center; }
+        .login-box { background: white; padding: 50px; border-radius: 16px; width: 400px; text-align: center; }
+
+      /* --- PRINT STYLES (PORTRAIT: 2 EMPLOYEES PER PAGE) --- */
+        #printArea { display: none; }
+        @media print {
+            body * { visibility: hidden; }
+            #printArea, #printArea * { visibility: visible !important; }
+            #printArea { position: absolute; left: 0; top: 0; width: 100%; background: white; z-index: 9999; display: block !important; }
+            
+            /* PORTRAIT PA RIN PERO MALIIT ANG MARGIN PARA KASYA DALAWA */
+            @page { size: portrait; margin: 5mm; }
+
+            /* WRAPPER: ETO ANG KEY CHANGE - HALF PAGE LANG ANG HEIGHT */
+            .payslip-page-wrapper { 
+                width: 100%; 
+                height: 130mm; /* Kalahati ng Bond Paper (approx) */
+                display: flex;
+                flex-direction: row; 
+                justify-content: space-between; 
+                align-items: flex-start;
+                
+                /* Ihiwalay ang bawat row, pero WAG mag new page agad */
+                margin-bottom: 5mm; 
+                padding-bottom: 5mm;
+                border-bottom: 2px dashed #999; /* Horizontal Cut Line sa ilalim ng bawat tao */
+                
+                position: relative;
+                page-break-inside: avoid; /* Wag hahatiin ang payslip */
+            }
+
+            /* VERTICAL LINE (Gitna ng Employee at Company Copy) */
+            .payslip-page-wrapper::after {
+                content: '';
+                position: absolute;
+                left: 50%;
+                top: 0;
+                bottom: 5mm; /* Wag paabutin sa horizontal cut line */
+                border-left: 1px dashed #ccc; 
+                transform: translateX(-50%);
+            }
+
+            /* ANG PAYSLIP BOX */
+            .payslip-box { 
+                width: 48%; 
+                border: 1px solid #000; 
+                padding: 8px; 
+                font-family: 'Arial Narrow', sans-serif; 
+                font-size: 9px; 
+                display: flex; 
+                flex-direction: column; 
+                box-sizing: border-box;
+                border-radius: 6px; 
+                background: white;
+                height: 100%; /* Gamitin ang height ng wrapper */
+            }
+
+            /* HEADER */
+            .ps-header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 3px; margin-bottom: 3px; }
+            .ps-title { font-weight: 900; font-size: 11px; text-transform: uppercase; display: block; }
+            .copy-tag { font-size: 7px; border: 1px solid #000; padding: 1px 4px; border-radius: 4px; display: inline-block; margin-top: 2px; }
+
+            /* INFO */
+            .ps-info { margin-bottom: 3px; border-bottom: 1px solid #eee; padding-bottom: 3px; }
+            .ps-info-grid { display: flex; justify-content: space-between; margin-bottom: 1px; font-weight: bold; font-size: 9px; }
+
+            /* TABLE LAYOUT */
+            .ps-body { display: block; flex-grow: 1; }
+            
+            .ps-col { width: 100%; border-bottom: 1px solid #000; margin-bottom: 3px; }
+            
+            .ps-col-head { 
+                background: #eee !important; 
+                -webkit-print-color-adjust: exact; 
+                font-weight: bold; 
+                padding: 2px; 
+                font-size: 8px; 
+                text-transform: uppercase;
+            }
+
+            .ps-table { width: 100%; border-collapse: collapse; font-size: 9px; }
+            .ps-table td { padding: 1px 0; border-bottom: 1px dotted #ccc; }
+            .ps-table td:last-child { text-align: right; }
+            
+            .ps-total-row { font-weight: bold; border-top: 1px solid #000; }
+            .ps-total-row td { border-bottom: none; padding-top: 2px; }
+
+            /* NET PAY */
+            .ps-net-box { 
+                border: 2px solid #000; 
+                padding: 4px; 
+                text-align: right; 
+                font-weight: 900; 
+                font-size: 11px; 
+                background: #f9f9f9 !important; 
+                -webkit-print-color-adjust: exact; 
+                border-radius: 4px;
+                margin-top: auto; /* Itulak sa baba */
+            }
+            
+            /* SIGNATURES */
+            .ps-footer { margin-top: 10px; display: flex; justify-content: space-between; align-items: flex-end; font-size: 7px; }
+            .sign-line { border-top: 1px solid #000; width: 45%; text-align: center; padding-top: 2px; margin-top: 10px; }
+
+            /* HIDE OLD CUT LINE */
+            .cut-line { display: none; }
+
+            /* --- SUMMARY REPORT --- */
+            .rpt-table { width: 100%; border-collapse: collapse; font-size: 9px; }
+            .rpt-table th { background: #0f1c3f !important; color: white !important; border: 1px solid #000; padding: 5px; -webkit-print-color-adjust: exact; }
+            .rpt-table td { border: 1px solid #000; padding: 4px; }
+            .rpt-header { text-align: center; margin-bottom: 20px; }
+            .rpt-sign-area { display: flex; justify-content: space-around; margin-top: 40px; }
+            .rpt-sign-box { width: 150px; text-align: center; }
+            .rpt-line { border-top: 1px solid #000; padding-top: 5px; font-weight: bold; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="loginOverlay">
+    <div class="login-box">
+        <h2 class="fw-bold mb-1" style="color:var(--bank-dark)">VG Payroll System</h2>
+        <p class="text-muted small mb-4">Secure Access Gateway</p>
+        <input type="email" id="loginEmail" class="form-control modern-input mb-3" placeholder="Email Address">
+        <input type="password" id="loginPass" class="form-control modern-input mb-4" placeholder="Password">
+        <button class="btn btn-bank w-100 py-3" onclick="login()">SECURE LOGIN</button>
+    </div>
+</div>
+
+<div id="mainApp" class="wrapper hidden">
+    <nav class="sidebar">
+        <div class="header">
+            <h5 class="m-0 fw-bold"><i class="fas fa-shield-alt"></i> VG PAYROLL SYSTEM</h5>
+            <small style="color:#94a3b8" id="userDisplay">...</small><br>
+            <span class="badge bg-warning text-dark mt-2" id="roleBadge">...</span>
+        </div>
+        <ul class="mt-3">
+            <li id="menu-dash"><a onclick="nav('dashboard')" id="link-dashboard"><i class="fas fa-chart-pie me-2"></i> Dashboard</a></li>
+            <li id="menu-emp"><a onclick="nav('employees')" id="link-employees"><i class="fas fa-user-tie me-2"></i> Employees</a></li>
+            <li id="menu-pay"><a onclick="nav('payroll')" id="link-payroll"><i class="fas fa-file-invoice-dollar me-2"></i> Batch Payroll</a></li>
+            <li id="menu-hist"><a onclick="nav('history')" id="link-history"><i class="fas fa-print me-2"></i> Reports</a></li>
+            <li id="menu-users" class="hidden"><a onclick="nav('users')" id="link-users"><i class="fas fa-users-cog me-2"></i> Access Control</a></li>
+            <li><a onclick="logout()" style="color:#ef4444; margin-top:50px; cursor:pointer;"><i class="fas fa-sign-out-alt me-2"></i> Sign Out</a></li>
+        </ul>
+    </nav>
+
+    <div id="content">
+        <!-- DASHBOARD (ANIMATED & FIXED DATA) -->
+        <div id="view-dashboard" class="page-section fade-in">
+            <h3 class="fw-bold mb-4" style="color:var(--bank-dark)">Executive Overview <small class="text-muted" style="font-size:12px; font-weight:normal;">(Latest Batch)</small></h3>
+            <div id="dashPeriodLabel" class="mb-3 badge bg-info">No Data</div>
+            <div class="row g-4">
+                <div class="col-md-3"><div class="stat-card bg-g-1"> <small>Employees Paid</small><h2 id="dashCount">0</h2> </div></div>
+                <div class="col-md-3"><div class="stat-card bg-g-2"> <small>Net Paid (Latest)</small><h2 id="dashTotalNet">₱0.00</h2> </div></div>
+                <div class="col-md-3"><div class="stat-card bg-g-3"> <small>Gross Pay (Latest)</small><h2 id="dashTotalGross">₱0.00</h2> </div></div>
+                <div class="col-md-3"><div class="stat-card bg-g-4"> <small>Deductions (Latest)</small><h2 id="dashTotalDed">₱0.00</h2> </div></div>
+            </div>
+        </div>
+
+        <!-- EMPLOYEES -->
+        <div id="view-employees" class="page-section hidden fade-in">
+            <h3 class="fw-bold mb-4" style="color:var(--bank-dark)">Employee Management</h3>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="bank-card hover-lift">
+                        <div class="bank-card-header">Profile</div>
+                        <div class="p-4">
+                            <input type="hidden" id="editEmpId"> 
+                            <form onsubmit="event.preventDefault(); saveEmployee();">
+                                <div class="mb-3"><small class="fw-bold text-muted">ID NUMBER</small><input type="text" id="empID" class="form-control modern-input" required></div>
+                                <div class="mb-3"><small class="fw-bold text-muted">FULL NAME</small><input type="text" id="empName" class="form-control modern-input" required></div>
+                                <div class="row g-2 mb-2">
+                                    <div class="col-6"><small class="fw-bold text-muted">BRANCH</small><input type="text" id="empBranch" class="form-control modern-input" required list="branchList"></div>
+                                    <div class="col-6"><small class="fw-bold text-muted">POSITION</small><input type="text" id="empPos" class="form-control modern-input" required></div>
+                                </div>
+                                <div class="row g-2 mb-2">
+                                    <div class="col-6"><small class="fw-bold text-muted">RATE (₱)</small><input type="number" id="empRate" class="form-control modern-input" step="0.01" required></div>
+                                    <div class="col-6"><small class="fw-bold text-muted">COLA</small><input type="number" id="empCola" class="form-control modern-input" value="0"></div>
+                                </div>
+                                <div class="bg-light p-2 rounded mb-2 border">
+                                    <small class="fw-bold text-primary mb-1 d-block">FIXED DEDUCTIONS</small>
+                                    <div class="row g-1">
+                                        <div class="col-4"><input type="number" id="empSSSVal" class="form-control modern-input form-control-sm" placeholder="SSS"></div>
+                                        <div class="col-4"><input type="number" id="empPhilVal" class="form-control modern-input form-control-sm" placeholder="PhilH"></div>
+                                        <div class="col-4"><input type="number" id="empPagVal" class="form-control modern-input form-control-sm" placeholder="PagI"></div>
+                                    </div>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button type="submit" class="btn btn-bank flex-grow-1" id="btnSaveEmp">SAVE RECORD</button>
+                                    <button type="button" class="btn btn-secondary w-100 mt-1" onclick="cancelEdit()" id="btnCancelEdit" style="display:none;">CANCEL</button>
+                                </div>
+                            </form>
+                            <datalist id="branchList"><option value="Manila"><option value="Davao"><option value="Cebu"></datalist>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-8">
+                    <div class="bank-card hover-lift">
+                        <div class="bank-card-header">Masterlist</div>
+                        <div class="table-container" style="max-height: 600px; overflow-y: auto;">
+                            <table class="custom-table">
+                                <thead><tr><th>ID</th><th>Name</th><th>Branch</th><th>Action</th></tr></thead>
+                                <tbody id="empTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAYROLL -->
+        <div id="view-payroll" class="page-section hidden fade-in">
+            <h3 class="fw-bold mb-4" style="color:var(--bank-dark)">Batch Payroll Processing</h3>
+            <div class="bank-card p-4 mb-3 hover-lift">
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-5"><label class="small fw-bold">PERIOD</label><div class="input-group"><input type="date" id="periodStart" class="form-control modern-input"><input type="date" id="periodEnd" class="form-control modern-input"></div></div>
+                    <div class="col-md-2"><label class="small fw-bold">CYCLE</label><select id="batchCycle" class="form-select modern-input" onchange="toggleGovDed()"><option value="1">1st</option><option value="2">2nd</option></select></div>
+                    <div class="col-md-3"><label class="small fw-bold">BRANCH</label><select id="batchBranchFilter" class="form-select modern-input" onchange="loadPayrollTable()"><option value="All">All</option></select></div>
+                    <div class="col-md-2"><button class="btn btn-bank w-100" onclick="loadPayrollTable()">LOAD</button></div>
+                </div>
+            </div>
+            <div class="bank-card p-0 hover-lift">
+                <div style="overflow-x:auto;"><table class="custom-table" style="font-size:0.8rem;"><thead><tr><th>Name</th><th>Rate</th><th>Days</th><th>OT</th><th>Hol</th><th>Gross</th><th>Late</th><th>SSS</th><th>Phil</th><th>PagI</th><th>CA</th><th>NET</th></tr></thead><tbody id="payrollTableBody"></tbody></table></div>
+                <div class="p-3 text-end bg-light border-top"><h4 class="d-inline me-3">Total: <span id="batchTotal">₱0.00</span></h4><button class="btn btn-success fw-bold" onclick="saveBatchPayroll()">SAVE BATCH</button></div>
+            </div>
+        </div>
+
+        <!-- HISTORY -->
+        <div id="view-history" class="page-section hidden fade-in">
+            <h3 class="fw-bold mb-4" style="color:var(--bank-dark)">Reports Center</h3>
+            <div class="row g-3 mb-4">
+                <div class="col-md-4"><select id="histPeriodFilter" class="form-select modern-input" onchange="loadRecordsByPeriod()"><option value="">Select Period...</option></select></div>
+                <div class="col-md-3"><select id="histBranchFilter" class="form-select modern-input" onchange="filterHistoryTable()"><option value="All">All Branches</option></select></div>
+                <div class="col-md-5 d-flex gap-2">
+                    <button class="btn btn-warning fw-bold flex-grow-1 shadow-sm" onclick="printFiltered('payslip')">PAYSLIPS</button>
+                    <button class="btn btn-secondary fw-bold flex-grow-1 shadow-sm" onclick="printFiltered('summary')">SUMMARY</button>
+                </div>
+            </div>
+            <div class="bank-card hover-lift"><table class="custom-table"><thead><tr><th>Name</th><th>Branch</th><th>Net Pay</th><th>Action</th></tr></thead><tbody id="historyTableBody"></tbody></table></div>
+        </div>
+
+        <!-- USERS -->
+        <div id="view-users" class="page-section hidden fade-in">
+            <h3 class="fw-bold mb-4" style="color:var(--bank-dark)">Access Control</h3>
+            <div class="row">
+                <div class="col-md-6"><div class="bank-card p-4 hover-lift"><h6>Create New Access</h6><input type="email" id="newEmail" class="form-control modern-input mb-2" placeholder="Email Address"><input type="password" id="newPassword" class="form-control modern-input mb-3" placeholder="Password"><select id="newRole" class="form-select modern-input mb-3"><option value="Staff">Staff</option><option value="Admin">Admin</option><option value="AdminView">Viewer</option></select><button class="btn btn-bank w-100" onclick="createStaffAccount()">Create Account</button></div></div>
+                <div class="col-md-6"><div class="bank-card p-4 border-warning hover-lift"><h6>Role Management</h6><input type="email" id="manageEmail" class="form-control modern-input mb-3" placeholder="User Email"><div class="d-flex gap-2"><button class="btn btn-danger flex-grow-1" onclick="setRole('Admin')">Set Admin</button><button class="btn btn-primary flex-grow-1" onclick="setRole('Staff')">Set Staff</button></div></div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="holidayModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content border-0 shadow-lg"><div class="modal-header bg-primary text-white"><h5 class="modal-title">Holiday Calculator</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body p-4"><input type="hidden" id="holEmpId"><div class="mb-3"><label class="fw-bold text-muted small">HOLIDAY NAME</label><input type="text" id="holDesc" class="form-control modern-input" placeholder="e.g. EDSA Revolution"></div><div class="row g-3"><div class="col-7"><select id="holType" class="form-select modern-input" onchange="calcHolidayPreview()"><option value="reg_work">Reg Worked (200%)</option><option value="reg_nowork">Reg Unworked (100%)</option><option value="spec_work">Spec Worked (130%)</option></select></div><div class="col-5"><input type="number" id="holDays" class="form-control modern-input" value="1" oninput="calcHolidayPreview()"></div></div><div class="mt-4 p-3 bg-light rounded border text-center">Add: <h3 class="fw-bold text-success m-0">₱<span id="holTotalAdd">0.00</span></h3></div></div><div class="modal-footer border-0"><button type="button" class="btn btn-bank w-100" onclick="applyHolidayPay()">APPLY</button></div></div></div></div>
+
+<div id="printArea"></div>
+
+<!-- FIREBASE & LOGIC -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script type="module">
+    import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc, collection, query, orderBy, where, getDocs, onSnapshot, limit } 
+    from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword } 
+    from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+
+    // PASTE YOUR FIREBASE CONFIG HERE
+    const firebaseConfig = {
+      apiKey: "AIzaSyBoijM1-8mNhcPb8KjcL_ZglJgoNdQLUrk",
+      authDomain: "vg-payroll-system.firebaseapp.com",
+      projectId: "vg-payroll-system",
+      storageBucket: "vg-payroll-system.firebasestorage.app",
+      messagingSenderId: "550694122065",
+      appId: "1:550694122065:web:22f9bc8914349afddd3e70"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    window.db = db; window.auth = auth; window.doc = doc; window.getDoc = getDoc; window.setDoc = setDoc; window.updateDoc = updateDoc; window.deleteDoc = deleteDoc;
+    window.addDoc = addDoc; window.collection = collection; window.query = query; window.orderBy = orderBy; 
+    window.where = where; window.getDocs = getDocs; window.onSnapshot = onSnapshot; window.limit = limit;
+    window.signInWithEmailAndPassword = signInWithEmailAndPassword; window.signOut = signOut;
+    window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;
+    window.initializeApp = initializeApp; window.deleteApp = deleteApp; window.firebaseConfig = firebaseConfig;
+
+    onAuthStateChanged(auth, async (user) => {
+        if (user) {
+            document.getElementById('loginOverlay').classList.add('hidden');
+            document.getElementById('mainApp').classList.remove('hidden');
+            document.getElementById('userDisplay').innerText = user.email;
+            
+            let role = "Staff";
+            if (user.email === "nephiprudencio68@gmail.com") { role = "Admin"; }
+            else {
+                try {
+                    const d = await getDoc(doc(db, "users", user.email.toLowerCase()));
+                    if(d.exists()) role = d.data().role;
+                } catch(e){}
+            }
+            window.currentUserRole = role;
+            document.getElementById('roleBadge').innerText = role;
+            applyRolePermissions(role);
+            initApp();
+        } else {
+            document.getElementById('mainApp').classList.add('hidden');
+            document.getElementById('loginOverlay').classList.remove('hidden');
+        }
+    });
+</script>
+
+<script>
+    let employees = []; let currentBatchData = []; let holidayModal;
+    document.addEventListener("DOMContentLoaded", function() { holidayModal = new bootstrap.Modal(document.getElementById('holidayModal')); });
+
+    function applyRolePermissions(role) {
+        const menus = ['menu-dash', 'menu-emp', 'menu-pay', 'menu-hist', 'menu-users'];
+        menus.forEach(id => document.getElementById(id).classList.remove('hidden'));
+        if (role === 'Admin') nav('dashboard');
+        else if (role === 'Staff') { document.getElementById('menu-users').classList.add('hidden'); nav('dashboard'); } 
+        else if (role === 'AdminView') {
+            ['menu-dash', 'menu-emp', 'menu-pay', 'menu-users'].forEach(id => document.getElementById(id).classList.add('hidden'));
+            nav('history'); 
+        }
+    }
+
+    function nav(p) {
+        const views = ['view-dashboard', 'view-employees', 'view-payroll', 'view-history', 'view-users'];
+        views.forEach(id => document.getElementById(id).classList.add('hidden'));
+        document.getElementById(`view-${p}`).classList.remove('hidden');
+        document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
+        if(document.getElementById(`link-${p}`)) document.getElementById(`link-${p}`).classList.add('active');
+    }
+
+    function formatNum(num) { return "₱" + parseFloat(num).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
+
+    async function login() {
+        const e = document.getElementById('loginEmail').value; const p = document.getElementById('loginPass').value;
+        try { await window.signInWithEmailAndPassword(window.auth, e, p); } catch(er) { alert(er.message); }
+    }
+    function logout() { window.signOut(window.auth); }
+
+    function initApp() {
+        // Employees
+        const q = window.query(window.collection(window.db, "payroll_employees"), window.orderBy("name"));
+        window.onSnapshot(q, (snap) => {
+            employees = []; let branches = new Set(); let html = "";
+            snap.forEach(doc => {
+                let d = doc.data(); d.id = doc.id; employees.push(d); branches.add(d.branch);
+                html += `<tr><td>${d.empID||'-'}</td><td><strong>${d.name}</strong></td><td>${d.branch}</td><td>${formatNum(d.dailyRate)}</td><td><button class="btn btn-sm btn-bank" onclick="editEmp('${d.id}')"><i class="fas fa-edit"></i></button></td></tr>`;
+            });
+            document.getElementById('empTableBody').innerHTML = html;
+            
+            let bOpts = '<option value="All">All Branches</option>';
+            branches.forEach(b => bOpts += `<option value="${b}">${b}</option>`);
+            document.getElementById('batchBranchFilter').innerHTML = bOpts;
+            document.getElementById('histBranchFilter').innerHTML = bOpts;
+        });
+
+        // Dashboard Stats Fix (Query Latest Batch)
+        loadDashboardStats();
+
+        // Load Batches Dropdown
+        const qB = window.query(window.collection(window.db, "payroll_batches"), window.orderBy("timestamp", "desc"));
+        window.onSnapshot(qB, (snap) => {
+            let uniquePeriods = new Set(); let opts = '<option value="">Select Period...</option>';
+            snap.forEach(doc => {
+                let d = doc.data(); let label = `${d.periodName} (Cycle ${d.cycle})`;
+                if (!uniquePeriods.has(label)) { uniquePeriods.add(label); opts += `<option value="${d.periodName}">${label}</option>`; }
+            });
+            document.getElementById('histPeriodFilter').innerHTML = opts;
+            loadDashboardStats(); // Refresh stats on batch update
+        });
+    }
+
+    async function loadDashboardStats() {
+        // 1. Kunin ang pinakabagong Batch
+        const qBatch = window.query(window.collection(window.db, "payroll_batches"), window.orderBy("timestamp", "desc"), window.limit(1));
+        const batchSnap = await window.getDocs(qBatch);
+        
+        if (!batchSnap.empty) {
+            const latestBatch = batchSnap.docs[0].data();
+            const latestId = batchSnap.docs[0].id;
+            
+            // FIX: I-update ang Label para alam mo kung anong Period ito
+            document.getElementById('dashPeriodLabel').innerText = `${latestBatch.periodName} (Cycle ${latestBatch.cycle})`;
+            document.getElementById('dashPeriodLabel').classList.remove('bg-info');
+            document.getElementById('dashPeriodLabel').classList.add('bg-success');
+
+            // 2. Kunin ang records para sa batch na ito
+            const qRecs = window.query(window.collection(window.db, "payroll_records"), window.where("batchId", "==", latestId));
+            const recSnap = await window.getDocs(qRecs);
+
+            let tNet = 0, tGross = 0, tDed = 0;
+            recSnap.forEach(doc => {
+                let d = doc.data();
+                // Siguraduhing numbers ang ina-add (tanggalin ang commas kung meron man, though sa code mo wala naman dapat)
+                tNet += parseFloat(d.netPay) || 0;
+                tGross += parseFloat(d.gross) || 0;
+                tDed += parseFloat(d.totalDed) || 0;
+            });
+
+            // Display
+            document.getElementById('dashCount').innerText = recSnap.size; 
+            document.getElementById('dashTotalNet').innerText = formatNum(tNet);
+            document.getElementById('dashTotalGross').innerText = formatNum(tGross);
+            document.getElementById('dashTotalDed').innerText = formatNum(tDed);
+        } else {
+            // Kung walang data
+            document.getElementById('dashPeriodLabel').innerText = "No Records Found";
+            document.getElementById('dashCount').innerText = "0";
+            document.getElementById('dashTotalNet').innerText = "₱0.00";
+            document.getElementById('dashTotalGross').innerText = "₱0.00";
+            document.getElementById('dashTotalDed').innerText = "₱0.00";
+        }
+    }
+
+    async function saveEmployee() {
+        const id = document.getElementById('editEmpId').value;
+        
+        // KINUHA KO ANG VALUES GAMIT ANG TAMANG IDs
+        const d = {
+            empID: document.getElementById('empID').value, 
+            name: document.getElementById('empName').value, 
+            branch: document.getElementById('empBranch').value, 
+            position: document.getElementById('empPos').value,
+            dailyRate: parseFloat(document.getElementById('empRate').value) || 0, 
+            cola: parseFloat(document.getElementById('empCola').value) || 0,
+            
+            // SINIGURADO KONG EMPTY STRING NA LANG KAPAG WALA SA FORM
+            sssNo: "", 
+            philNo: "", 
+            pagNo: "",
+            
+            // ITO ANG MAHALAGA: ANG DEDUCTION AMOUNTS
+            sssAmount: parseFloat(document.getElementById('empSSSVal').value) || 0, 
+            philAmount: parseFloat(document.getElementById('empPhilVal').value) || 0, 
+            pagAmount: parseFloat(document.getElementById('empPagVal').value) || 0,
+            
+            timestamp: Date.now()
+        };
+
+        try { 
+            if (id) {
+                await window.updateDoc(window.doc(window.db, "payroll_employees", id), d); 
+            } else {
+                await window.addDoc(window.collection(window.db, "payroll_employees"), d); 
+            }
+            alert("Saved Successfully!"); 
+            cancelEdit(); // Close the form
+        } catch(e) { 
+            alert("Error Saving: " + e.message); 
+            console.error(e);
+        }
+    }
+   function editEmp(id) {
+        const e = employees.find(x => x.id === id); 
+        if(!e) return;
+        
+        document.getElementById('editEmpId').value = id;
+        document.getElementById('empID').value = e.empID; 
+        document.getElementById('empName').value = e.name; 
+        document.getElementById('empBranch').value = e.branch; 
+        document.getElementById('empPos').value = e.position;
+        document.getElementById('empRate').value = e.dailyRate; 
+        document.getElementById('empCola').value = e.cola || 0;
+
+        // TINANGGAL KO YUNG 'sssNo', 'philNo' DITO DAHIL WALA NAMAN SA FORM MO
+        // DITO NAGKAKAMALI KANINA (Error: null)
+
+        // SET AMOUNTS
+        document.getElementById('empSSSVal').value = e.sssAmount || 0; 
+        document.getElementById('empPhilVal').value = e.philAmount || 0; 
+        document.getElementById('empPagVal').value = e.pagAmount || 0;
+
+        // UI UPDATES
+        document.getElementById('btnSaveEmp').innerText = "UPDATE RECORD"; 
+        document.getElementById('btnCancelEdit').style.display = 'block'; 
+        
+        // SCROLL TO TOP PARA MAKITA MO YUNG INEDIT
+        document.querySelector('.bank-card').scrollIntoView({ behavior: 'smooth' });
+    }
+    function cancelEdit(){ document.getElementById('editEmpId').value=""; document.querySelectorAll('#view-employees input').forEach(i=>i.value=""); document.getElementById('btnSaveEmp').innerText="SAVE RECORD"; document.getElementById('btnCancelEdit').style.display='none'; }
+
+    function loadPayrollTable() {
+        const filter = document.getElementById('batchBranchFilter').value;
+        const cycle = document.getElementById('batchCycle').value;
+        const list = filter === "All" ? employees : employees.filter(e => e.branch === filter);
+        const govState = cycle === "1" ? "disabled style='background:#eee'" : "";
+        let html = "";
+        list.forEach(e => {
+            let sssVal = (cycle === "2") ? (e.sssAmount || 0) : 0; let philVal = (cycle === "2") ? (e.philAmount || 0) : 0; let pagVal = (cycle === "2") ? (e.pagAmount || 0) : 0;
+            html += `<tr class="pay-row" data-id="${e.id}" data-rate="${e.dailyRate}"><td><strong>${e.name}</strong><br><small class="text-muted">${e.position}</small></td><td>${e.dailyRate}</td><td><input type="number" class="modern-input inp-days" oninput="calcRow(this)" placeholder="0" style="width:70px"></td><td><input type="number" class="modern-input inp-ot" oninput="calcRow(this)" placeholder="0" style="width:60px"></td><td><div class="input-group input-group-sm"><input type="number" class="form-control inp-hol" oninput="calcRow(this)" value="0"><button class="btn btn-outline-secondary" onclick="openHolidayModal('${e.id}')"><i class="fas fa-calendar"></i></button></div><input type="hidden" class="inp-hol-desc"></td><td class="fw-bold text-primary val-gross">0.00</td><td><input type="number" class="modern-input inp-late" oninput="calcRow(this)" value="0" style="width:60px"></td><td><input type="number" class="modern-input inp-sss" oninput="calcRow(this)" value="${sssVal}" ${govState} style="width:60px"></td><td><input type="number" class="modern-input inp-phil" oninput="calcRow(this)" value="${philVal}" ${govState} style="width:60px"></td><td><input type="number" class="modern-input inp-pag" oninput="calcRow(this)" value="${pagVal}" ${govState} style="width:60px"></td><td><input type="number" class="modern-input inp-ca" oninput="calcRow(this)" value="0" style="width:60px"></td><td class="fw-bold text-success val-net">0.00</td></tr>`;
+        });
+        document.getElementById('payrollTableBody').innerHTML = html;
+        document.querySelectorAll('.pay-row').forEach(row => calcRow(row.querySelector('.inp-days')));
+    }
+    function toggleGovDed() { loadPayrollTable(); }
+    function calcRow(el) {
+        if(!el) return; const row = el.closest('tr');
+        const rate = parseFloat(row.dataset.rate); const hourly = rate / 8;
+        const days = parseFloat(row.querySelector('.inp-days').value) || 0; const ot = parseFloat(row.querySelector('.inp-ot').value) || 0; const hol = parseFloat(row.querySelector('.inp-hol').value) || 0;
+        const basic = days * rate; const otPay = ot * (hourly * 1.25); const gross = basic + otPay + hol;
+        row.querySelector('.val-gross').innerText = gross.toFixed(2);
+        const late = parseFloat(row.querySelector('.inp-late').value)||0; const sss = parseFloat(row.querySelector('.inp-sss').value)||0; const phil = parseFloat(row.querySelector('.inp-phil').value)||0; const pag = parseFloat(row.querySelector('.inp-pag').value)||0; const ca = parseFloat(row.querySelector('.inp-ca').value)||0;
+        const totalDed = late + sss + phil + pag + ca; const net = gross - totalDed;
+        row.querySelector('.val-net').innerText = net.toFixed(2); updateTotal();
+    }
+    function updateTotal() {
+        let t = 0; document.querySelectorAll('.val-net').forEach(e => t += parseFloat(e.innerText));
+        document.getElementById('batchTotal').innerText = formatNum(t);
+    }
+    function openHolidayModal(id) { document.getElementById('holEmpId').value = id; document.getElementById('holDesc').value = ""; calcHolidayPreview(); holidayModal.show(); }
+    function calcHolidayPreview() { 
+        const id=document.getElementById('holEmpId').value; const e=employees.find(x=>x.id===id); if(!e)return;
+        const r=parseFloat(e.dailyRate); const t=document.getElementById('holType').value; const d=parseFloat(document.getElementById('holDays').value)||0;
+        let add=0; if(t==='reg_work')add=r*1*d; if(t==='reg_nowork')add=r*1*d; if(t==='spec_work')add=r*0.3*d;
+        document.getElementById('holTotalAdd').innerText=add.toFixed(2);
+    }
+    function applyHolidayPay() {
+        const id=document.getElementById('holEmpId').value; const add=document.getElementById('holTotalAdd').innerText; const desc=document.getElementById('holDesc').value||"Holiday";
+        const row=document.querySelector(`.pay-row[data-id="${id}"]`);
+        if(row){ 
+            const i=row.querySelector('.inp-hol'); const hd=row.querySelector('.inp-hol-desc');
+            i.value=(parseFloat(i.value)+parseFloat(add)).toFixed(2);
+            hd.value=hd.value?`${hd.value}, ${desc}`:desc;
+            calcRow(i);
+        }
+        holidayModal.hide();
+    }
+    async function saveBatchPayroll() {
+        const d1 = document.getElementById('periodStart').value; const d2 = document.getElementById('periodEnd').value;
+        if(!d1 || !d2) return alert("Select Dates");
+        const opts = { month: 'short', day: 'numeric', year: 'numeric' };
+        const periodName = `${new Date(d1).toLocaleDateString('en-US', opts)} - ${new Date(d2).toLocaleDateString('en-US', opts)}`;
+        const cycle = document.getElementById('batchCycle').value;
+        if(!confirm(`Save Batch?`)) return;
+        try {
+            const ref = await window.addDoc(window.collection(window.db,"payroll_batches"),{periodName,cycle,timestamp:Date.now()});
+            const rows = document.querySelectorAll('.pay-row');
+            for(let row of rows){
+                const net = parseFloat(row.querySelector('.val-net').innerText);
+                if(net>0){
+                    const e=employees.find(x=>x.id===row.dataset.id);
+                    const gross = row.querySelector('.val-gross').innerText;
+                    const totDed = (parseFloat(gross) - net).toFixed(2);
+                    await window.addDoc(window.collection(window.db,"payroll_records"),{
+                        batchId:ref.id, period:periodName, empName:e.name, branch:e.branch, position:e.position,
+                        netPay:net, gross:gross, totalDed:totDed,
+                        rate:e.dailyRate, days:row.querySelector('.inp-days').value, ot:row.querySelector('.inp-ot').value, hol:row.querySelector('.inp-hol').value, holDesc: row.querySelector('.inp-hol-desc').value,
+                        late:row.querySelector('.inp-late').value, sss:row.querySelector('.inp-sss').value, phil:row.querySelector('.inp-phil').value, pag:row.querySelector('.inp-pag').value, ca:row.querySelector('.inp-ca').value,
+                        timestamp:Date.now()
+                    });
+                }
+            }
+            alert("Saved!"); document.getElementById('payrollTableBody').innerHTML="";
+        } catch(e){alert(e.message);}
+    }
+
+    async function loadRecordsByPeriod() {
+        const periodName = document.getElementById('histPeriodFilter').value; if(!periodName) return;
+        const q = window.query(window.collection(window.db,"payroll_records"),window.where("period","==",periodName));
+        const snap = await window.getDocs(q);
+        currentBatchData=[]; 
+        snap.forEach(doc=>{ let d=doc.data(); d.id=doc.id; currentBatchData.push(d); });
+        filterHistoryTable();
+    }
+    function filterHistoryTable() {
+        const branch = document.getElementById('histBranchFilter').value;
+        const tb = document.getElementById('historyTableBody');
+        let filtered = branch==="All" ? currentBatchData : currentBatchData.filter(d=>d.branch===branch);
+        let html="";
+        if(filtered.length===0){html="<tr><td colspan='5' class='text-center'>No records</td></tr>";}
+        else{
+            filtered.forEach(d=>{ 
+                let delBtn = window.currentUserRole === 'Admin' ? `<button class="btn btn-sm btn-danger ms-2" onclick="deleteRecord('${d.id}')"><i class="fas fa-trash"></i></button>` : '';
+                html+=`<tr><td>${d.empName}</td><td>${d.branch}</td><td>${formatNum(d.netPay)}</td><td><div class="btn-group"><button class="btn btn-sm btn-bank" onclick="printOne('${d.id}')"><i class="fas fa-print"></i></button>${delBtn}</div></td></tr>`; 
+            });
+        }
+        tb.innerHTML=html;
+    }
+    async function deleteRecord(id) {
+        if(window.currentUserRole !== 'Admin') return alert("Access Denied: Admins Only");
+        if(confirm("Delete record?")) { 
+            try { 
+                await window.deleteDoc(window.doc(window.db,"payroll_records",id)); 
+                alert("Deleted"); 
+                loadRecordsByPeriod(); // Refresh History Table
+                loadDashboardStats();  // <--- ADD THIS (Refresh Dashboard Stats)
+            } catch(e){
+                alert(e.message);
+            } 
+        }
+    }
+    function printFiltered(type) {
+        const branch = document.getElementById('histBranchFilter').value;
+        let data = branch==="All"?currentBatchData:currentBatchData.filter(x=>x.branch===branch);
+        if(!data||data.length===0)return alert("No records");
+        document.getElementById('printArea').innerHTML="";
+        if(type==='payslip') generatePayslips(data); else generateSummary(data);
+        setTimeout(()=>window.print(),1000);
+    }
+    function printOne(id){ const d=currentBatchData.find(x=>x.id===id); generatePayslips([d]); setTimeout(()=>window.print(),1000); }
+
+    function generatePayslips(data) {
+        let html="";
+        data.forEach(d=>{
+            const card = (type) => `
+                <div class="payslip-box">
+                    <div class="ps-header">
+                        <div class="ps-title">VG FREIGHTAGE DOMESTIC</div>
+                        <div>
+                            <div style="font-size:9px;">${d.period}</div>
+                            <div class="copy-tag">${type} COPY</div>
+                        </div>
+                    </div>
+                    <div class="ps-info">
+                        <div class="ps-info-grid">
+                            <div>NAME: ${d.empName}</div> <div>POS: ${d.position}</div>
+                        </div>
+                        <div class="ps-info-grid">
+                            <div>BRANCH: ${d.branch}</div> <div>RATE: ₱${d.rate}</div>
+                        </div>
+                    </div>
+                    <div class="ps-body">
+                        <div class="ps-col">
+                            <div class="ps-col-head">EARNINGS</div>
+                            <table class="ps-table">
+                                <tr><td>Basic (${d.days}d)</td><td class="ps-val">${formatNum(d.days*d.rate)}</td></tr>
+                                <tr><td>Overtime</td><td class="ps-val">${formatNum(((d.rate/8)*1.25*d.ot))}</td></tr>
+                                <tr><td>Holiday</td><td class="ps-val">${formatNum(d.hol)}</td></tr>
+                                <tr class="ps-total-row"><td>GROSS</td><td class="ps-val">${formatNum(d.gross)}</td></tr>
+                            </table>
+                        </div>
+                        <div class="ps-col">
+                            <div class="ps-col-head">DEDUCTIONS</div>
+                            <table class="ps-table">
+                                <tr><td>SSS</td><td class="ps-val">${formatNum(d.sss)}</td></tr>
+                                <tr><td>PhilH</td><td class="ps-val">${formatNum(d.phil)}</td></tr>
+                                <tr><td>PagI</td><td class="ps-val">${formatNum(d.pag)}</td></tr>
+                                <tr><td>Late/CA</td><td class="ps-val">${formatNum(parseFloat(d.late)+parseFloat(d.ca))}</td></tr>
+                                <tr class="ps-total-row"><td>TOTAL</td><td class="ps-val">${formatNum(d.totalDed)}</td></tr>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="ps-net-box">NET PAY: ${formatNum(d.netPay)}</div>
+                    <div class="ps-footer">
+                        <div class="sign-line">Approved By</div>
+                        <div class="sign-line">Received By</div>
+                    </div>
+                </div>
+            `;
+            html += `
+            <div class="payslip-page-wrapper">
+                ${card('EMPLOYEE')}
+                <div class="cut-line"></div>
+                ${card('COMPANY')}
+            </div>`;
+        });
+        document.getElementById('printArea').innerHTML=html;
+    }
+
+    function generateSummary(data) {
+        let rows=""; let tNet=0, tGross=0, tDed=0;
+        data.forEach(d=>{ 
+            tNet+=parseFloat(d.netPay); tGross+=parseFloat(d.gross); tDed+=parseFloat(d.totalDed);
+            rows+=`<tr><td>${d.empName}</td><td>${d.position}</td><td>${d.branch}</td><td>${d.days}</td><td>${d.ot}</td><td>${d.hol}</td><td>${formatNum(d.late)}</td><td>${formatNum(d.sss)}</td><td>${formatNum(d.phil)}</td><td>${formatNum(d.pag)}</td><td>${formatNum(d.gross)}</td><td>${formatNum(d.totalDed)}</td><td>${formatNum(d.netPay)}</td></tr>`; 
+        });
+        document.getElementById('printArea').innerHTML=`
+            <div class="rpt-header"><div class="rpt-title">PAYROLL SUMMARY REPORT</div><div>${data[0].period} | ${document.getElementById('histBranchFilter').value}</div></div>
+            <table class="rpt-table">
+                <thead><tr><th>NAME</th><th>POS</th><th>BRANCH</th><th>DYS</th><th>OT</th><th>HOL</th><th>LATE</th><th>SSS</th><th>PHIL</th><th>PAG</th><th>GROSS</th><th>DED</th><th>NET</th></tr></thead>
+                <tbody>${rows}</tbody>
+                <tfoot><tr class="rpt-total"><td colspan="10" style="text-align:right;">GRAND TOTAL:</td><td>${formatNum(tGross)}</td><td>${formatNum(tDed)}</td><td>${formatNum(tNet)}</td></tr></tfoot>
+            </table>
+            <div class="rpt-sign-area">
+                <div class="rpt-sign-box"><div class="rpt-line">Prepared By</div></div>
+                <div class="rpt-sign-box"><div class="rpt-line">Checked By</div></div>
+                <div class="rpt-sign-box"><div class="rpt-line">Approved By</div></div>
+            </div>`;
+    }
+
+    window.createStaffAccount = async function() {
+        const e=document.getElementById('newEmail').value.trim().toLowerCase(); 
+        const p=document.getElementById('newPassword').value.trim(); 
+        const r=document.getElementById('newRole').value; 
+        if(!e||!p)return alert("Fill details");
+        const btn=document.querySelector('button[onclick="createStaffAccount()"]'); btn.innerText="Creating..."; btn.disabled=true;
+        try{
+            const secApp = window.initializeApp(window.firebaseConfig, "Secondary");
+            const { getAuth, createUserWithEmailAndPassword, signOut } = await import("https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js");
+            const sAuth = getAuth(secApp);
+            await createUserWithEmailAndPassword(sAuth, e, p);
+            await signOut(sAuth); await window.deleteApp(secApp);
+            await window.setDoc(window.doc(window.db,"users",e),{email:e,role:r,createdBy:window.auth.currentUser.email});
+            alert("User Created!");
+        }catch(err){alert(err.message);}
+        btn.innerText="Create Account"; btn.disabled=false;
+    }
+    
+    window.setRole = async function(r) {
+        let e = document.getElementById('manageEmail').value.trim().toLowerCase();
+        try { await window.setDoc(window.doc(window.db, "users", e), { email: e, role: r }, {merge:true}); alert("Role Updated"); }
+        catch(er) { alert(er.message); }
+    }
+
+    window.nav = nav; window.login = login; window.logout = logout; window.saveEmployee = saveEmployee; window.editEmp = editEmp; window.cancelEdit = cancelEdit; window.loadPayrollTable = loadPayrollTable; window.toggleGovDed = toggleGovDed; window.calcRow = calcRow; window.saveBatchPayroll = saveBatchPayroll; window.loadRecordsByPeriod = loadRecordsByPeriod; window.filterHistoryTable = filterHistoryTable; window.printFiltered = printFiltered; window.printOne = printOne;
+    window.openHolidayModal = openHolidayModal; window.applyHolidayPay = applyHolidayPay; window.calcHolidayPreview = calcHolidayPreview; window.deleteRecord = deleteRecord;
+</script>
+</body>
+</html>
