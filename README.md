@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VG Payroll | System </title>
+    <title>VG Payroll | System</title>
     
     <!-- CSS & FONTS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -181,17 +181,17 @@
 <div id="loginOverlay">
     <div class="login-box">
         <h2 class="fw-bold mb-1" style="color:var(--bank-dark)">VG Payroll</h2>
-        <p class="text-muted small mb-4">Secure Access Gateway</p>
+        <p class="text-muted small mb-4">Bridge to Your Logistics Success</p>
         <input type="email" id="loginEmail" class="form-control modern-input mb-3" placeholder="Email Address">
         <input type="password" id="loginPass" class="form-control modern-input mb-4" placeholder="Password">
-        <button class="btn btn-bank w-100 py-3" onclick="login()">SECURE LOGIN</button>
+        <button class="btn btn-bank w-100 py-3" onclick="login()">LOGIN</button>
     </div>
 </div>
 
 <div id="mainApp" class="wrapper hidden">
     <nav class="sidebar">
         <div class="header">
-            <h5 class="m-0 fw-bold"><i class="fas fa-shield-alt"></i> VG PAYROLL SYSTEM</h5>
+            <h5 class="m-0 fw-bold"><i class="fas fa-shield-alt"></i>VG PAYROLL SYSTEM</h5>
             <small style="color:#94a3b8" id="userDisplay">...</small><br>
             <span class="badge bg-warning text-dark mt-2" id="roleBadge">...</span>
         </div>
