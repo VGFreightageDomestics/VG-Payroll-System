@@ -180,7 +180,7 @@
 
 <div id="loginOverlay">
     <div class="login-box">
-        <h2 class="fw-bold mb-1" style="color:var(--bank-dark)">VG Payroll System</h2>
+        <h2 class="fw-bold mb-1" style="color:var(--bank-dark)">VG Payroll</h2>
         <p class="text-muted small mb-4">Secure Access Gateway</p>
         <input type="email" id="loginEmail" class="form-control modern-input mb-3" placeholder="Email Address">
         <input type="password" id="loginPass" class="form-control modern-input mb-4" placeholder="Password">
